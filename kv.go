@@ -6,6 +6,11 @@ import (
 	"os"
 )
 
+const (
+	KeySizeSize   = 2
+	ValueSizeSize = 8
+)
+
 type KV struct {
 	file  *os.File
 	index map[string]KeyDir
@@ -37,7 +42,7 @@ func buildIndex(kv *KV) error {
 	}
 	offset := int64(0)
 	for {
-		keyValueSizeBytes := make([]byte, 8+8)
+		keyValueSizeBytes := make([]byte, KeySizeSize+ValueSizeSize)
 		_, err = kv.file.Read(keyValueSizeBytes)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -45,10 +50,10 @@ func buildIndex(kv *KV) error {
 			}
 			return err
 		}
-		keySize := int64(binary.BigEndian.Uint64(keyValueSizeBytes[0:8]))
-		valueSize := int64(binary.BigEndian.Uint64(keyValueSizeBytes[8:]))
+		keySize := int64(binary.BigEndian.Uint16(keyValueSizeBytes[0:KeySizeSize]))
+		valueSize := int64(binary.BigEndian.Uint64(keyValueSizeBytes[KeySizeSize:]))
 
-		offset += 8 + 8
+		offset += KeySizeSize + ValueSizeSize
 
 		keyValueBytes := make([]byte, keySize+valueSize)
 		_, err = kv.file.Read(keyValueBytes)
@@ -96,8 +101,8 @@ func readAt(file *os.File, offset int64, size int64) (string, error) {
 func (kv *KV) Set(key string, value string) error {
 	keyBytes := []byte(key)
 	valueBytes := []byte(value)
-	keySizeBytes := intToBuffer(uint64(len(keyBytes)))
-	valueSizeBytes := intToBuffer(uint64(len(valueBytes)))
+	keySizeBytes := int16ToBuffer(uint16(len(keyBytes)))
+	valueSizeBytes := int64ToBuffer(uint64(len(valueBytes)))
 
 	fileInfo, err := kv.file.Stat()
 	if err != nil {
@@ -116,12 +121,17 @@ func (kv *KV) Set(key string, value string) error {
 	if _, err := kv.file.Write(bytesToWrite); err != nil {
 		return err
 	}
-	kv.index[key] = KeyDir{valueSize: int64(len(valueBytes)), valueOffset: offset + int64(8+8) + int64(len(keyBytes))}
+	kv.index[key] = KeyDir{valueSize: int64(len(valueBytes)), valueOffset: offset + int64(KeySizeSize+ValueSizeSize) + int64(len(keyBytes))}
 	return nil
 }
 
-func intToBuffer(number uint64) []byte {
+func int64ToBuffer(number uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, number)
+	return buf
+}
+func int16ToBuffer(number uint16) []byte {
+	buf := make([]byte, 2)
+	binary.BigEndian.PutUint16(buf, number)
 	return buf
 }
