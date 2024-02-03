@@ -18,8 +18,9 @@ func BenchmarkWrites(b *testing.B) {
 		fmt.Println(err)
 		panic(err)
 	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := kv.Set(fmt.Sprintf("key%d", i), "value")
+		err := kv.Set("key", "value")
 		if err != nil {
 			fmt.Println(err)
 			panic(err)

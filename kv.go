@@ -17,7 +17,7 @@ type KeyDir struct {
 }
 
 func NewKV() (*KV, error) {
-	file, err := os.OpenFile("data", os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile("data", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +99,11 @@ func (kv *KV) Set(key string, value string) error {
 	keySizeBytes := intToBuffer(uint64(len(keyBytes)))
 	valueSizeBytes := intToBuffer(uint64(len(valueBytes)))
 
-	offset, err := kv.file.Seek(0, io.SeekCurrent)
+	fileInfo, err := kv.file.Stat()
 	if err != nil {
 		return err
 	}
+	offset := fileInfo.Size()
 
 	order := [][]byte{
 		keySizeBytes, valueSizeBytes, keyBytes, valueBytes,
