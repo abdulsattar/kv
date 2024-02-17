@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"os"
 )
@@ -75,10 +76,7 @@ func (kv *KV) Close() error {
 func (kv *KV) Get(key string) (string, error) {
 	keyDir, exists := kv.index[key]
 	if !exists {
-		err := buildIndex(kv)
-		if err != nil {
-			return "", err
-		}
+		return "", errors.New("key Not found")
 	}
 	return readAt(kv.file, keyDir.valueOffset, keyDir.valueSize)
 }
